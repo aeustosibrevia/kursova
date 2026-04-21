@@ -1,23 +1,24 @@
 import numpy as np
 ####################
 m = 4
-n = [40, 30, 50, 10]
-c = [1, 0.9, 0.6, 0.4,
-     0.9, 1, 0.7, 0.5,
-     0.6, 0.7, 1, 0.8,
-     0.4, 0.5, 0.8, 1]
+n = [40, 30, 20, 10]
+c = [1, 0.8, 0.5, 0.6,
+     0.8, 1, 0.6, 0.7,
+     0.5, 0.6, 1, 0.9,
+     0.6, 0.7, 0.9, 1]
 
 matrix_c = np.array(c).reshape(m, m)
 
-r = [0, 0.1, 0.3, 0.5,
-     0.1, 0, 0.2, 0.4,
-     0.3, 0.2, 0, 0.2,
-     0.5, 0.4, 0.2, 0]
+r = [0, 0.2, 0.1, 0.1,
+     0.2, 0, 0.1, 0.1,
+     0.1, 0.1, 0, 0.2,
+     0.1, 0.1, 0.2, 0]
 
 matrix_r = np.array(r).reshape(m, m)
 
-t = 0.6
-d = 0.8
+t = 0.5
+d = 0.5
+
 ####################
 def risk_of_set(S):
      total = 0
@@ -43,7 +44,7 @@ def total_agreement(i, S):
      total = 0
      for j in S:
           if i != j:
-               total += matrix_c[S[i], S[j]]
+               total += matrix_c[i, j]
      return total
 
 N = sum(n)
@@ -91,7 +92,7 @@ for i in K:
           h0 = i
 H = {h0}
 
-JH = list(set(K) - set(H))
+print(H)
 while True:
      sum_H = 0
      for i in H:
@@ -119,15 +120,7 @@ while True:
 
      for i in K:
           if i not in H:
-               ok = True
-
-               for h in H:
-                    if matrix_c[h, i] < t:
-                         ok = False
-                         break
-
-               if ok:
-                    JH.add(i)
+               JH.add(i)
 
      if not JH:
           raise Exception("Помилка: неможливо побудувати допустиме ядро")
@@ -135,12 +128,13 @@ while True:
      j_star = None
      best_val = -1
 
+     JH = list(JH)
      for j in JH:
           score = 0
 
-          for h in H:
-               if matrix_c[h, j] >= t:
-                    score += matrix_c[h, j]
+          for i in JH:
+               if matrix_c[i, j] >= t:
+                    score += matrix_c[i, j]
 
           if score > best_val:
                best_val = score
@@ -148,9 +142,11 @@ while True:
 
      H.add(j_star)
 
+K_out = {i + 1 for i in K}
+H_out = {i + 1 for i in H}
 
-print("K* =", K)
-print("H* =", H)
+print("K* =", K_out)
+print("H* =", H_out)
 print("F* =", F(K))
 
 
