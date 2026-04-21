@@ -1,23 +1,27 @@
 import numpy as np
 ####################
 m = 4
-n = [40, 30, 20, 10]
-c = [1, 0.8, 0.5, 0.6,
-     0.8, 1, 0.6, 0.7,
-     0.5, 0.6, 1, 0.9,
-     0.6, 0.7, 0.9, 1]
+n = [20, 80, 10, 10]
 
-matrix_c = np.array(c).reshape(m, m)
+c = [
+    1, 0.3, 0.3, 0.3,
+    0.3, 1, 0.7, 0.7,
+    0.3, 0.7, 1, 0.7,
+    0.3, 0.7, 0.7, 1
+]
 
-r = [0, 0.2, 0.1, 0.1,
-     0.2, 0, 0.1, 0.1,
-     0.1, 0.1, 0, 0.2,
-     0.1, 0.1, 0.2, 0]
-
-matrix_r = np.array(r).reshape(m, m)
+r = [
+    0, 0.2, 0.2, 0.2,
+    0.2, 0, 0.1, 0.1,
+    0.2, 0.1, 0, 0.1,
+    0.2, 0.1, 0.1, 0
+]
 
 t = 0.5
-d = 0.5
+d = 0.8
+
+matrix_c = np.array(c).reshape(m, m)
+matrix_r = np.array(r).reshape(m, m)
 
 ####################
 def risk_of_set(S):
@@ -49,6 +53,12 @@ def total_agreement(i, S):
 
 N = sum(n)
 print(N)
+for i in range(m):
+     if n[i] >= (N * 0.5 + 1):
+          print("K* = ", {i})
+          print("H* = ", {i})
+          print("F* = ", 1)
+          raise Exception("Коаліція складається з однієї партії")
 
 row_sums = []
 for i in range(m):
@@ -59,6 +69,7 @@ for i in range(m):
      row_sums.append(total)
 i0 = row_sums.index(max(row_sums))
 K = {i0}
+print(i0)
 print(K)
 
 while sum(n[i] for i in K) < N * 0.5 + 1:
@@ -87,6 +98,7 @@ best_val = 0
 h0 = None
 for i in K:
      current_res = total_agreement(i, K)
+     # print("Total: ", current_res)
      if current_res > best_val:
           best_val = current_res
           h0 = i
