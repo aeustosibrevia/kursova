@@ -1,6 +1,7 @@
 from greedy import run_greedy
 from branch_and_bound import run_branch_and_bound
 from generator import generate_data
+from readfile import read_from_file
 
 
 def read_int_list(prompt, expected_len):
@@ -77,6 +78,7 @@ def main():
     print("Оберіть режим:")
     print("1 - Ввести дані вручну")
     print("2 - Згенерувати випадково")
+    print("3 - Зчитати з файлу")
 
     while True:
         choice = input("Ваш вибір: ")
@@ -102,60 +104,37 @@ def main():
 
             break
 
+
         elif choice == "2":
+
             print("\n--- Генерація ---")
 
-            import random
+            m, n, c, r, t, d = generate_data()
 
-            while True:
-                try:
-                    m = int(input("m (кількість фракцій): "))
-                    if m <= 0:
-                        print("m має бути > 0")
-                        continue
-                    break
-                except:
-                    print("Помилка вводу")
+            break
 
-            n_min, n_max = 10, 100
-            change = input(f"Змінити діапазон n_i? (за замовчуванням [{n_min}, {n_max}]) y/n: ")
+        elif choice == "3":
+            print("\n--- Зчитування з файлу ---")
 
-            if change.lower() == 'y':
-                n_min = int(input("n_min: "))
-                n_max = int(input("n_max: "))
+            filename = input("Введіть ім'я файлу: ")
 
-            n = [random.randint(n_min, n_max) for _ in range(m)]
+            m, n, c, r, t, d, err = read_from_file(filename)
 
-            c = []
-            for i in range(m):
-                for j in range(m):
-                    if i == j:
-                        c.append(1.0)
-                    else:
-                        c.append(round(random.uniform(0, 1), 2))
+            if err:
+                print("Помилка при читанні файлу:", err)
+                continue
 
-            r = []
-            for i in range(m):
-                for j in range(m):
-                    if i == j:
-                        r.append(0.0)
-                    else:
-                        r.append(round(random.uniform(0, 1), 2))
-
-            t = round(random.uniform(0, 1), 2)
-            d = round(random.uniform(0, 1), 2)
-
-            print("\n--- Згенерована задача ---")
+            print("\n--- Дані з файлу ---")
             print("m =", m)
             print("n =", n)
 
             print("\nMatrix C:")
             for i in range(m):
-                print(c[i*m:(i+1)*m])
+                print(c[i * m:(i + 1) * m])
 
             print("\nMatrix R:")
             for i in range(m):
-                print(r[i*m:(i+1)*m])
+                print(r[i * m:(i + 1) * m])
 
             print("\nt =", t)
             print("d =", d)
