@@ -1,86 +1,17 @@
 from greedy import run_greedy
 from branch_and_bound import run_branch_and_bound
-from generator import generate_data
-from readfile import read_from_file
+from utils import generate_data, generate_test_data, read_int_list, read_matrix, read_float, read_from_file
+import time
+import matplotlib.pyplot as plt
 
-
-def read_int_list(prompt, expected_len):
+def input_menu():
     while True:
-        try:
-            data = list(map(int, input(prompt).split()))
-            if len(data) != expected_len:
-                print("Неправильна кількість елементів")
-                continue
-            return data
-        except:
-            print("Помилка вводу. Спробуйте ще раз")
+        print("\n--- МЕНЮ ВВОДУ ---")
+        print("1 - Ввести дані вручну")
+        print("2 - Згенерувати випадково")
+        print("3 - Зчитати з файлу")
+        print("0 - Назад")
 
-
-def read_matrix(m, name, diag_type):
-    print(f"\nВведіть матрицю {name} ({m} рядків по {m} чисел):")
-
-    while True:
-        data = []
-        ok = True
-
-        for i in range(m):
-            try:
-                row = list(map(float, input(f"Рядок {i+1}: ").split()))
-
-                if len(row) != m:
-                    print("Неправильна кількість елементів у рядку")
-                    ok = False
-                    break
-
-                data.append(row)
-
-            except:
-                print("Помилка вводу")
-                ok = False
-                break
-
-        if not ok:
-            print("Спробуйте ввести матрицю ще раз\n")
-            continue
-
-        diag_ok = True
-        for i in range(m):
-            if diag_type == "zero" and data[i][i] != 0:
-                print(f"У матриці {name} діагональ має бути 0")
-                diag_ok = False
-                break
-            if diag_type == "one" and data[i][i] != 1:
-                print(f"У матриці {name} діагональ має бути 1")
-                diag_ok = False
-                break
-
-        if not diag_ok:
-            print("Спробуйте ще раз\n")
-            continue
-
-        flat = []
-        for row in data:
-            for val in row:
-                flat.append(val)
-
-        return flat
-
-
-def read_float(prompt):
-    while True:
-        try:
-            return float(input(prompt))
-        except:
-            print("Помилка вводу. Введіть число")
-
-
-def main():
-    print("Оберіть режим:")
-    print("1 - Ввести дані вручну")
-    print("2 - Згенерувати випадково")
-    print("3 - Зчитати з файлу")
-
-    while True:
         choice = input("Ваш вибір: ")
 
         if choice == "1":
@@ -102,26 +33,20 @@ def main():
             t = read_float("t: ")
             d = read_float("d: ")
 
-            break
-
+            return m, n, c, r, t, d
 
         elif choice == "2":
-
             print("\n--- Генерація ---")
-
-            m, n, c, r, t, d = generate_data()
-
-            break
+            return generate_data()
 
         elif choice == "3":
             print("\n--- Зчитування з файлу ---")
 
             filename = input("Введіть ім'я файлу: ")
-
             m, n, c, r, t, d, err = read_from_file(filename)
 
             if err:
-                print("Помилка при читанні файлу:", err)
+                print("Помилка:", err)
                 continue
 
             print("\n--- Дані з файлу ---")
@@ -139,30 +64,440 @@ def main():
             print("\nt =", t)
             print("d =", d)
 
+            return m, n, c, r, t, d
+
+        elif choice == "0":
+            return None
+
+        else:
+            print("Невірний вибір")
+
+def run_experiments():
+    print("\n=== ЕКСПЕРИМЕНТИ ===")
+
+    m = int(input("m: "))
+    n_min = int(input("n_min: "))
+    n_max = int(input("n_max: "))
+    R = int(input("Кількість запусків R: "))
+
+    greedy_F = []
+    greedy_T = []
+
+    bb_F = []
+    bb_T = []
+
+    delta_list = []
+    bb_wins = 0
+
+    for k in range(R):
+
+        m_, n, c, r, t, d = generate_test_data(m, n_min, n_max)
+
+        start = time.time()
+        _, _, F_g, err = run_greedy(m_, n, c, r, t, d)
+        t_g = time.time() - start
+
+        if err:
+            F_g = 0
+
+        start = time.time()
+        K_b, H_b, F_b = run_branch_and_bound(m_, n, c, r, t, d)
+        t_b = time.time() - start
+
+        if K_b is None:
+            F_b = 0
+
+        denom = max(F_b, F_g)
+        if denom == 0:
+            delta = 0
+        else:
+            delta = (F_b - F_g) / denom
+
+        delta_list.append(delta)
+
+        if F_b > F_g:
+            bb_wins += 1
+
+        greedy_F.append(F_g)
+        bb_F.append(F_b)
+
+        greedy_T.append(t_g)
+        bb_T.append(t_b)
+
+        print(f"Test {k+1}/{R}: "
+              f"Fg={F_g:.4f}, Fb={F_b:.4f}, δ={delta:.4f}")
+
+    def mean(arr):
+        return sum(arr) / len(arr)
+
+    def variance(arr, m):
+        return sum((x - m) ** 2 for x in arr) / len(arr)
+
+    greedy_mean = mean(greedy_F)
+    bb_mean = mean(bb_F)
+
+    greedy_var = variance(greedy_F, greedy_mean)
+    bb_var = variance(bb_F, bb_mean)
+
+    greedy_time = mean(greedy_T)
+    bb_time = mean(bb_T)
+
+    delta_mean = mean(delta_list)
+    w = bb_wins / R
+
+
+    print("\n=== GREEDY ===")
+    print("F̄ =", greedy_mean)
+    print("D =", greedy_var)
+    print("T̄ =", greedy_time)
+
+    print("\n=== BRANCH AND BOUND ===")
+    print("F̄ =", bb_mean)
+    print("D =", bb_var)
+    print("T̄ =", bb_time)
+
+    print("\n=== ПОРІВНЯННЯ ===")
+    print("δ̄ =", delta_mean)
+    print("w (BnB wins rate) =", w)
+
+    tests = list(range(1, R + 1))
+
+    plt.figure()
+    plt.plot(tests, greedy_F, marker='o', label='Greedy')
+    plt.plot(tests, bb_F, marker='o', label='Branch&Bound')
+
+    plt.xlabel("Номер експерименту")
+    plt.ylabel("Значення ЦФ (F)")
+    plt.title("Залежність F від номера експерименту")
+    plt.legend()
+    plt.grid()
+
+    plt.figure()
+    plt.plot(tests, greedy_T, marker='o', label='Greedy')
+    plt.plot(tests, bb_T, marker='o', label='Branch&Bound')
+
+    plt.xlabel("Номер експерименту")
+    plt.ylabel("Час виконання")
+    plt.title("Залежність часу від номера експерименту")
+    plt.legend()
+    plt.grid()
+
+    plt.show()
+
+def print_problem(m, n, c, r, t, d):
+    print("\n--- УМОВА ЗАДАЧІ ---")
+    print("m =", m)
+    print("n =", n)
+
+    print("\nMatrix C:")
+    for i in range(m):
+        print(c[i*m:(i+1)*m])
+
+    print("\nMatrix R:")
+    for i in range(m):
+        print(r[i*m:(i+1)*m])
+
+    print("\nt =", t)
+    print("d =", d)
+
+def study_m():
+    print("\n=== ДОСЛІДЖЕННЯ ПАРАМЕТРА m ===")
+
+    m_min = int(input("m_min: "))
+    m_max = int(input("m_max: "))
+
+    n_min = int(input("n_min: "))
+    n_max = int(input("n_max: "))
+
+    m_full, n_full, c_full, r_full, t, d = generate_test_data(m_max, n_min, n_max)
+
+    m_values = []
+    greedy_T = []
+    bb_T = []
+    greedy_F = []
+    bb_F = []
+
+    for m in range(m_min, m_max + 1):
+
+        n = n_full[:m]
+
+        c = []
+        r = []
+
+        for i in range(m):
+            for j in range(m):
+                c.append(c_full[i * m_full + j])
+                r.append(r_full[i * m_full + j])
+
+        print("\n==============================")
+        print(f"ЕКСПЕРИМЕНТ: m = {m}")
+
+        print_problem(m, n, c, r, t, d)
+
+        start = time.time()
+        _, _, F_g, err = run_greedy(m, n, c, r, t, d)
+        t_g = time.time() - start
+
+        if err:
+            F_g = 0
+
+        start = time.time()
+        K_b, _, F_b = run_branch_and_bound(m, n, c, r, t, d)
+        t_b = time.time() - start
+
+        if K_b is None:
+            F_b = 0
+
+        print("\n--- РЕЗУЛЬТАТИ ---")
+        print(f"Greedy: F={F_g:.4f}, T={t_g:.4f}")
+        print(f"BnB:    F={F_b:.4f}, T={t_b:.4f}")
+
+        m_values.append(m)
+        greedy_T.append(t_g)
+        bb_T.append(t_b)
+        greedy_F.append(F_g)
+        bb_F.append(F_b)
+
+    plt.figure()
+    plt.plot(m_values, greedy_T, marker='o', label='Greedy')
+    plt.plot(m_values, bb_T, marker='o', label='BnB')
+    plt.xlabel("m")
+    plt.ylabel("Час виконання")
+    plt.title("Залежність часу від m")
+    plt.legend()
+    plt.grid()
+
+    plt.figure()
+    plt.plot(m_values, greedy_F, marker='o', label='Greedy')
+    plt.plot(m_values, bb_F, marker='o', label='BnB')
+    plt.xlabel("m")
+    plt.ylabel("Цільова функція (F)")
+    plt.title("Залежність F від m")
+    plt.legend()
+    plt.grid()
+
+    plt.show()
+
+def study_t():
+    print("\n=== ДОСЛІДЖЕННЯ ПАРАМЕТРА t ===")
+
+    m = int(input("m: "))
+    n_min = int(input("n_min: "))
+    n_max = int(input("n_max: "))
+
+    t_min = float(input("t_min: "))
+    t_max = float(input("t_max: "))
+    steps = int(input("Кількість кроків: "))
+
+    m, n, c, r, _, d = generate_test_data(m, n_min, n_max)
+
+    t_values = []
+    greedy_T = []
+    bb_T = []
+    greedy_F = []
+    bb_F = []
+
+    for i in range(steps + 1):
+        t = t_min + (t_max - t_min) * i / steps
+
+        print("\n==============================")
+        print(f"ЕКСПЕРИМЕНТ: t = {t:.2f}")
+
+        print_problem(m, n, c, r, t, d)
+
+        start = time.time()
+        _, _, F_g, err = run_greedy(m, n, c, r, t, d)
+        t_g = time.time() - start
+
+        if err:
+            F_g = 0
+
+        start = time.time()
+        K_b, _, F_b = run_branch_and_bound(m, n, c, r, t, d)
+        t_b = time.time() - start
+
+        if K_b is None:
+            F_b = 0
+
+        print("\n--- РЕЗУЛЬТАТИ ---")
+        print(f"Greedy: F={F_g:.4f}, T={t_g:.4f}")
+        print(f"BnB:    F={F_b:.4f}, T={t_b:.4f}")
+
+        t_values.append(t)
+        greedy_T.append(t_g)
+        bb_T.append(t_b)
+        greedy_F.append(F_g)
+        bb_F.append(F_b)
+
+    plt.figure()
+    plt.plot(t_values, greedy_T, marker='o', label='Greedy')
+    plt.plot(t_values, bb_T, marker='o', label='BnB')
+    plt.xlabel("t")
+    plt.ylabel("Час")
+    plt.title("Залежність часу від t")
+    plt.legend()
+    plt.grid()
+
+    plt.figure()
+    plt.plot(t_values, greedy_F, marker='o', label='Greedy')
+    plt.plot(t_values, bb_F, marker='o', label='BnB')
+    plt.xlabel("t")
+    plt.ylabel("F")
+    plt.title("Залежність F від t")
+    plt.legend()
+    plt.grid()
+
+    plt.show()
+
+def study_d():
+    print("\n=== ДОСЛІДЖЕННЯ ПАРАМЕТРА d ===")
+
+    m = int(input("m: "))
+    n_min = int(input("n_min: "))
+    n_max = int(input("n_max: "))
+
+    d_min = float(input("d_min: "))
+    d_max = float(input("d_max: "))
+    steps = int(input("Кількість кроків: "))
+
+    m, n, c, r, t, _ = generate_test_data(m, n_min, n_max)
+
+    d_values = []
+    greedy_T = []
+    bb_T = []
+    greedy_F = []
+    bb_F = []
+
+    print("\nФіксовані параметри: m, n, c, r, t")
+    print("Змінюється тільки d")
+
+    for i in range(steps + 1):
+        d = d_min + (d_max - d_min) * i / steps
+
+        print("\n==============================")
+        print(f"ЕКСПЕРИМЕНТ: d = {d:.2f}")
+
+        print_problem(m, n, c, r, t, d)
+
+        start = time.time()
+        _, _, F_g, err = run_greedy(m, n, c, r, t, d)
+        t_g = time.time() - start
+
+        if err:
+            F_g = 0
+
+        start = time.time()
+        K_b, _, F_b = run_branch_and_bound(m, n, c, r, t, d)
+        t_b = time.time() - start
+
+        if K_b is None:
+            F_b = 0
+
+        print("\n--- РЕЗУЛЬТАТИ ---")
+        print(f"Greedy: F={F_g:.4f}, T={t_g:.4f}")
+        print(f"BnB:    F={F_b:.4f}, T={t_b:.4f}")
+
+        d_values.append(d)
+        greedy_T.append(t_g)
+        bb_T.append(t_b)
+        greedy_F.append(F_g)
+        bb_F.append(F_b)
+
+    plt.figure()
+    plt.plot(d_values, greedy_T, marker='o', label='Greedy')
+    plt.plot(d_values, bb_T, marker='o', label='BnB')
+    plt.xlabel("d")
+    plt.ylabel("Час виконання")
+    plt.title("Залежність часу від d")
+    plt.legend()
+    plt.grid()
+
+    plt.figure()
+    plt.plot(d_values, greedy_F, marker='o', label='Greedy')
+    plt.plot(d_values, bb_F, marker='o', label='BnB')
+    plt.xlabel("d")
+    plt.ylabel("Цільова функція (F)")
+    plt.title("Залежність F від d")
+    plt.legend()
+    plt.grid()
+
+    plt.show()
+
+def parameter_study():
+    print("\n=== ДОСЛІДЖЕННЯ ПАРАМЕТРІВ ===")
+    print("1 - Дослідити m")
+    print("2 - Дослідити t")
+    print("3 - Дослідити d")
+
+    choice = input("Ваш вибір: ")
+
+    if choice == "1":
+        study_m()
+    elif choice == "2":
+        study_t()
+    elif choice == "3":
+        study_d()
+    else:
+        print("Невірний вибір")
+
+stored_data = None
+def main():
+    while True:
+        print("\n=== ГОЛОВНЕ МЕНЮ ===")
+        print("1 - Ввести дані")
+        print("2 - Розв'язати задачу")
+        print("3 - Провести експерименти")
+        print("4 - Дослідження параметрів")
+        print("0 - Вихід")
+
+        choice = input("Ваш вибір: ")
+
+        if choice == "1":
+            data = input_menu()
+            if data is not None:
+                global stored_data
+                stored_data = data
+
+        elif choice == "2":
+            if stored_data is None:
+                print("Спочатку введіть або згенеруйте дані!")
+                continue
+
+            m, n, c, r, t, d = stored_data
+
+            print("\n--- Greedy ---")
+            K_greedy, H_greedy, F_greedy, err = run_greedy(m, n, c, r, t, d)
+
+            if err:
+                print(err)
+            else:
+                print("K* =", K_greedy)
+                print("H* =", H_greedy)
+                print("F* =", F_greedy)
+
+            print("\n--- Branch and Bound ---")
+            K_bb, H_bb, F_bb = run_branch_and_bound(m, n, c, r, t, d)
+
+            if K_bb is None:
+                print("Допустиму коаліцію не знайдено")
+            else:
+                print("K* =", K_bb)
+                print("H* =", H_bb)
+                print("F* =", F_bb)
+
+
+        elif choice == "3":
+            run_experiments()
+
+        elif choice == "4":
+            parameter_study()
+
+        elif choice == "0":
+            print("Вихід з програми...")
             break
 
         else:
-            print("Невірний вибір, спробуйте ще раз")
-
-    print("\n--- Greedy ---")
-    K_greedy, H_greedy, F_greedy, err = run_greedy(m, n, c, r, t, d)
-
-    if err:
-        print(err)
-    else:
-        print("K* =", K_greedy)
-        print("H* =", H_greedy)
-        print("F* =", F_greedy)
-
-    print("\n--- Branch and Bound ---")
-    K_bb, H_bb, F_bb = run_branch_and_bound(m, n, c, r, t, d)
-
-    if K_bb is None:
-        print("Допустиму коаліцію не знайдено")
-    else:
-        print("K* =", K_bb)
-        print("H* =", H_bb)
-        print("F* =", F_bb)
+            print("Невірний вибір. Спробуйте ще раз")
 
 if __name__ == "__main__":
     main()
