@@ -440,7 +440,73 @@ def parameter_study():
     else:
         print("Невірний вибір")
 
+def output_menu():
+    global stored_data, stored_result
+
+    if stored_data is None or stored_result is None:
+        print("Немає даних або результатів!")
+        return
+
+    print("\n--- ВИВЕДЕННЯ ---")
+    print("1 - Вивести на екран")
+    print("2 - Записати в файл")
+
+    choice = input("Ваш вибір: ")
+
+    m, n, c, r, t, d = stored_data
+    K_g, H_g, F_g, err_g, K_b, H_b, F_b = stored_result
+
+    def format_data():
+        text = []
+        text.append("=== УМОВА ===")
+        text.append(f"m = {m}")
+        text.append(f"n = {n}")
+
+        text.append("\nMatrix C:")
+        for i in range(m):
+            text.append(str(c[i*m:(i+1)*m]))
+
+        text.append("\nMatrix R:")
+        for i in range(m):
+            text.append(str(r[i*m:(i+1)*m]))
+
+        text.append(f"\nt = {t}")
+        text.append(f"d = {d}")
+
+        text.append("\n=== РЕЗУЛЬТАТИ ===")
+
+        text.append("\n--- Greedy ---")
+        if err_g:
+            text.append("Не вдалося знайти допустиме рішення")
+        else:
+            text.append(f"K* = {K_g}")
+            text.append(f"H* = {H_g}")
+            text.append(f"F* = {F_g}")
+
+        text.append("\n--- Branch and Bound ---")
+        if K_b is None:
+            text.append("Не вдалося знайти допустиме рішення")
+        else:
+            text.append(f"K* = {K_b}")
+            text.append(f"H* = {H_b}")
+            text.append(f"F* = {F_b}")
+
+        return "\n".join(text)
+
+    if choice == "1":
+        print("\n" + format_data())
+
+    elif choice == "2":
+        filename = input("Ім'я файлу: ")
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(format_data())
+        print("Дані записано у файл!")
+
+    else:
+        print("Невірний вибір")
+
 stored_data = None
+stored_result = None
 def main():
     while True:
         print("\n=== ГОЛОВНЕ МЕНЮ ===")
@@ -448,6 +514,7 @@ def main():
         print("2 - Розв'язати задачу")
         print("3 - Провести експерименти")
         print("4 - Дослідження параметрів")
+        print("5 - Вивести дані")
         print("0 - Вихід")
 
         choice = input("Ваш вибір: ")
@@ -462,28 +529,18 @@ def main():
             if stored_data is None:
                 print("Спочатку введіть або згенеруйте дані!")
                 continue
-
             m, n, c, r, t, d = stored_data
+            print("\nОбчислення задачі...")
 
-            print("\n--- Greedy ---")
-            K_greedy, H_greedy, F_greedy, err = run_greedy(m, n, c, r, t, d)
+            K_greedy, H_greedy, F_greedy, err_greedy = run_greedy(m, n, c, r, t, d)
 
-            if err:
-                print(err)
-            else:
-                print("K* =", K_greedy)
-                print("H* =", H_greedy)
-                print("F* =", F_greedy)
-
-            print("\n--- Branch and Bound ---")
             K_bb, H_bb, F_bb = run_branch_and_bound(m, n, c, r, t, d)
-
-            if K_bb is None:
-                print("Допустиму коаліцію не знайдено")
-            else:
-                print("K* =", K_bb)
-                print("H* =", H_bb)
-                print("F* =", F_bb)
+            global stored_result
+            stored_result = (
+                K_greedy, H_greedy, F_greedy, err_greedy,
+                K_bb, H_bb, F_bb
+            )
+            print("Обчислення завершено. Перейдіть у пункт 5 для перегляду результатів.")
 
 
         elif choice == "3":
@@ -491,6 +548,9 @@ def main():
 
         elif choice == "4":
             parameter_study()
+
+        elif choice == "5":
+            output_menu()
 
         elif choice == "0":
             print("Вихід з програми...")
