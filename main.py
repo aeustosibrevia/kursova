@@ -86,7 +86,6 @@ def run_experiments():
     bb_F = []
     bb_T = []
 
-    delta_list = []
     bb_wins = 0
 
     for k in range(R):
@@ -107,14 +106,6 @@ def run_experiments():
         if K_b is None:
             F_b = 0
 
-        denom = max(F_b, F_g)
-        if denom == 0:
-            delta = 0
-        else:
-            delta = (F_b - F_g) / denom
-
-        delta_list.append(delta)
-
         if F_b > F_g:
             bb_wins += 1
 
@@ -125,7 +116,7 @@ def run_experiments():
         bb_T.append(t_b)
 
         print(f"Test {k+1}/{R}: "
-              f"Fg={F_g:.4f}, Fb={F_b:.4f}, δ={delta:.4f}")
+              f"Fg={F_g:.4f}, Fb={F_b:.4f}")
 
     def mean(arr):
         return sum(arr) / len(arr)
@@ -142,9 +133,18 @@ def run_experiments():
     greedy_time = mean(greedy_T)
     bb_time = mean(bb_T)
 
-    delta_mean = mean(delta_list)
-    w = bb_wins / R
+    # --- НОВИЙ розрахунок δ ---
+    sum_Fg = sum(greedy_F)
+    sum_Fb = sum(bb_F)
 
+    denom = max(sum_Fb, sum_Fg)
+
+    if denom == 0:
+        delta_mean = 0
+    else:
+        delta_mean = (sum_Fb - sum_Fg) / denom
+
+    w = bb_wins / R
 
     print("\n=== GREEDY ===")
     print("F̄ =", greedy_mean)
@@ -447,63 +447,68 @@ def output_menu():
         print("Немає даних або результатів!")
         return
 
-    print("\n--- ВИВЕДЕННЯ ---")
-    print("1 - Вивести на екран")
-    print("2 - Записати в файл")
+    while True:
+        print("\n--- ВИВЕДЕННЯ ---")
+        print("1 - Вивести на екран")
+        print("2 - Записати в файл")
+        print("0 - Назад")
 
-    choice = input("Ваш вибір: ")
+        choice = input("Ваш вибір: ")
 
-    m, n, c, r, t, d = stored_data
-    K_g, H_g, F_g, err_g, K_b, H_b, F_b = stored_result
+        if choice == "0":
+            return
 
-    def format_data():
-        text = []
-        text.append("=== УМОВА ===")
-        text.append(f"m = {m}")
-        text.append(f"n = {n}")
+        m, n, c, r, t, d = stored_data
+        K_g, H_g, F_g, err_g, K_b, H_b, F_b = stored_result
 
-        text.append("\nMatrix C:")
-        for i in range(m):
-            text.append(str(c[i*m:(i+1)*m]))
+        def format_data():
+            text = []
+            text.append("=== УМОВА ===")
+            text.append(f"m = {m}")
+            text.append(f"n = {n}")
 
-        text.append("\nMatrix R:")
-        for i in range(m):
-            text.append(str(r[i*m:(i+1)*m]))
+            text.append("\nMatrix C:")
+            for i in range(m):
+                text.append(str(c[i*m:(i+1)*m]))
 
-        text.append(f"\nt = {t}")
-        text.append(f"d = {d}")
+            text.append("\nMatrix R:")
+            for i in range(m):
+                text.append(str(r[i*m:(i+1)*m]))
 
-        text.append("\n=== РЕЗУЛЬТАТИ ===")
+            text.append(f"\nt = {t}")
+            text.append(f"d = {d}")
 
-        text.append("\n--- Greedy ---")
-        if err_g:
-            text.append("Не вдалося знайти допустиме рішення")
+            text.append("\n=== РЕЗУЛЬТАТИ ===")
+
+            text.append("\n--- Greedy ---")
+            if err_g:
+                text.append("Не вдалося знайти допустиме рішення")
+            else:
+                text.append(f"K* = {K_g}")
+                text.append(f"H* = {H_g}")
+                text.append(f"F* = {F_g}")
+
+            text.append("\n--- Branch and Bound ---")
+            if K_b is None:
+                text.append("Не вдалося знайти допустиме рішення")
+            else:
+                text.append(f"K* = {K_b}")
+                text.append(f"H* = {H_b}")
+                text.append(f"F* = {F_b}")
+
+            return "\n".join(text)
+
+        if choice == "1":
+            print("\n" + format_data())
+
+        elif choice == "2":
+            filename = input("Ім'я файлу: ")
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write(format_data())
+            print("Дані записано у файл!")
+
         else:
-            text.append(f"K* = {K_g}")
-            text.append(f"H* = {H_g}")
-            text.append(f"F* = {F_g}")
-
-        text.append("\n--- Branch and Bound ---")
-        if K_b is None:
-            text.append("Не вдалося знайти допустиме рішення")
-        else:
-            text.append(f"K* = {K_b}")
-            text.append(f"H* = {H_b}")
-            text.append(f"F* = {F_b}")
-
-        return "\n".join(text)
-
-    if choice == "1":
-        print("\n" + format_data())
-
-    elif choice == "2":
-        filename = input("Ім'я файлу: ")
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write(format_data())
-        print("Дані записано у файл!")
-
-    else:
-        print("Невірний вибір")
+            print("Невірний вибір")
 
 stored_data = None
 stored_result = None
