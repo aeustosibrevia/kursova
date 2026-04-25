@@ -86,7 +86,6 @@ def run_experiments():
     bb_F = []
     bb_T = []
 
-    delta_list = []
     bb_wins = 0
 
     for k in range(R):
@@ -107,14 +106,6 @@ def run_experiments():
         if K_b is None:
             F_b = 0
 
-        denom = max(F_b, F_g)
-        if denom == 0:
-            delta = 0
-        else:
-            delta = (F_b - F_g) / denom
-
-        delta_list.append(delta)
-
         if F_b > F_g:
             bb_wins += 1
 
@@ -125,7 +116,7 @@ def run_experiments():
         bb_T.append(t_b)
 
         print(f"Test {k+1}/{R}: "
-              f"Fg={F_g:.4f}, Fb={F_b:.4f}, δ={delta:.4f}")
+              f"Fg={F_g:.4f}, Fb={F_b:.4f}")
 
     def mean(arr):
         return sum(arr) / len(arr)
@@ -142,9 +133,18 @@ def run_experiments():
     greedy_time = mean(greedy_T)
     bb_time = mean(bb_T)
 
-    delta_mean = mean(delta_list)
-    w = bb_wins / R
+    # --- НОВИЙ розрахунок δ ---
+    sum_Fg = sum(greedy_F)
+    sum_Fb = sum(bb_F)
 
+    denom = max(sum_Fb, sum_Fg)
+
+    if denom == 0:
+        delta_mean = 0
+    else:
+        delta_mean = (sum_Fb - sum_Fg) / denom
+
+    w = bb_wins / R
 
     print("\n=== GREEDY ===")
     print("F̄ =", greedy_mean)
