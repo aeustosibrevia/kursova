@@ -15,24 +15,47 @@ def generate_data():
 
     n = [random.randint(n_min, n_max) for _ in range(m)]
 
-    matrix_c = []
-    for i in range(m):
-        for j in range(m):
-            if i == j:
-                matrix_c.append(1.0)
-            else:
-                matrix_c.append(round(random.uniform(0, 1), 2))
-
-    matrix_r = []
-    for i in range(m):
-        for j in range(m):
-            if i == j:
-                matrix_r.append(0.0)
-            else:
-                matrix_r.append(round(random.uniform(0, 1), 2))
-
     t = round(random.uniform(0, 1), 2)
     d = round(random.uniform(0, 1), 2)
+
+    total_pairs = m * (m - 1) // 2
+
+    c_good = int(total_pairs * 0.85)
+    r_good = int(total_pairs * 0.6)
+
+    all_pairs = [(i, j) for i in range(m) for j in range(i+1, m)]
+    random.shuffle(all_pairs)
+
+    c_good_pairs = set(all_pairs[:c_good])
+    r_good_pairs = set(all_pairs[:r_good])
+
+    matrix_c = [0.0] * (m * m)
+
+    for i in range(m):
+        matrix_c[i*m + i] = 1.0
+
+    for (i, j) in all_pairs:
+        if (i, j) in c_good_pairs:
+            val = round(random.uniform(t, 1), 2)
+        else:
+            val = round(random.uniform(0, t), 2)
+
+        matrix_c[i*m + j] = val
+        matrix_c[j*m + i] = val
+
+    matrix_r = [0.0] * (m * m)
+
+    for i in range(m):
+        matrix_r[i*m + i] = 0.0
+
+    for (i, j) in all_pairs:
+        if (i, j) in r_good_pairs:
+            val = round(random.uniform(0, d), 2)
+        else:
+            val = round(random.uniform(d, 1), 2)
+
+        matrix_r[i*m + j] = val
+        matrix_r[j*m + i] = val
 
     print("\n--- Згенерована задача ---")
     print("m =", m)
@@ -55,24 +78,43 @@ def generate_data():
 def generate_test_data(m, n_min, n_max, t_min=0, t_max=1, d_min=0, d_max=1):
     n = [random.randint(n_min, n_max) for _ in range(m)]
 
-    matrix_c = []
-    for i in range(m):
-        for j in range(m):
-            if i == j:
-                matrix_c.append(1.0)
-            else:
-                matrix_c.append(round(random.uniform(0, 1), 2))
-
-    matrix_r = []
-    for i in range(m):
-        for j in range(m):
-            if i == j:
-                matrix_r.append(0.0)
-            else:
-                matrix_r.append(round(random.uniform(0, 1), 2))
-
     t = round(random.uniform(t_min, t_max), 2)
     d = round(random.uniform(d_min, d_max), 2)
+
+    total_pairs = m * (m - 1) // 2
+
+    c_good = int(total_pairs * 0.85)
+    r_good = int(total_pairs * 0.6)
+
+    all_pairs = [(i, j) for i in range(m) for j in range(i+1, m)]
+    random.shuffle(all_pairs)
+
+    c_good_pairs = set(all_pairs[:c_good])
+    r_good_pairs = set(all_pairs[:r_good])
+
+    matrix_c = [0.0] * (m * m)
+    matrix_r = [0.0] * (m * m)
+
+    for i in range(m):
+        matrix_c[i*m + i] = 1.0
+        matrix_r[i*m + i] = 0.0
+
+    for (i, j) in all_pairs:
+        if (i, j) in c_good_pairs:
+            val_c = round(random.uniform(t, 1), 2)
+        else:
+            val_c = round(random.uniform(0, t), 2)
+
+        matrix_c[i*m + j] = val_c
+        matrix_c[j*m + i] = val_c
+
+        if (i, j) in r_good_pairs:
+            val_r = round(random.uniform(0, d), 2)
+        else:
+            val_r = round(random.uniform(d, 1), 2)
+
+        matrix_r[i*m + j] = val_r
+        matrix_r[j*m + i] = val_r
 
     return m, n, matrix_c, matrix_r, t, d
 
