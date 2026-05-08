@@ -3,52 +3,46 @@ from itertools import combinations
 
 
 def _build_matrices(m, n, t, all_pairs, c_good_pairs, r_good_pairs):
-    """Генерує матриці C та R і підбирає d так, щоб гарантовано існувала допустима коаліція."""
+    import numpy as np
 
-    matrix_c = [0.0] * (m * m)
-    for i in range(m):
-        matrix_c[i*m + i] = 1.0
+    mc = np.zeros((m, m))
+    np.fill_diagonal(mc, 1.0)
     for (i, j) in all_pairs:
-        if (i, j) in c_good_pairs:
-            val_c = round(random.uniform(t, 1), 2)
-        else:
-            val_c = round(random.uniform(0, t), 2)
-        matrix_c[i*m + j] = val_c
-        matrix_c[j*m + i] = val_c
+        v = round(random.uniform(t, 1), 2) if (i, j) in c_good_pairs else round(random.uniform(0, t), 2)
+        mc[i, j] = mc[j, i] = v
+    matrix_c = mc.flatten().tolist()
 
-    # Генеруємо r без прив'язки до d — рівномірно з різними діапазонами для "хороших" пар
-    r_raw = {}
+    mr = np.zeros((m, m))
     for (i, j) in all_pairs:
-        if (i, j) in r_good_pairs:
-            val_r = round(random.uniform(0.0, 0.4), 2)
-        else:
-            val_r = round(random.uniform(0.3, 1.0), 2)
-        r_raw[(i, j)] = val_r
+        v = round(random.uniform(0.0, 0.4), 2) if (i, j) in r_good_pairs else round(random.uniform(0.3, 1.0), 2)
+        mr[i, j] = mr[j, i] = v
+    matrix_r = mr.flatten().tolist()
 
-    matrix_r = [0.0] * (m * m)
-    for i in range(m):
-        matrix_r[i*m + i] = 0.0
-    for (i, j) in all_pairs:
-        v = r_raw[(i, j)]
-        matrix_r[i*m + j] = v
-        matrix_r[j*m + i] = v
-
-    # Знаходимо мінімальний ризик серед усіх підмножин, що дають більшість.
-    # d встановлюємо >= цього ризику + випадковий буфер.
-    # Так гарантується, що хоча б одна коаліція пройде обмеження на ризик.
     N = sum(n)
     threshold = N * 0.5 + 1
-    min_risk = float('inf')
-    for size in range(1, m + 1):
-        for combo in combinations(range(m), size):
-            if sum(n[i] for i in combo) >= threshold:
-                risk = sum(r_raw.get((min(i, j), max(i, j)), 0)
-                           for i, j in combinations(combo, 2))
-                if risk < min_risk:
-                    min_risk = risk
 
-    buffer = random.uniform(0.03, 0.4)
-    d = round(min_risk + buffer, 2)
+    start = int(np.argmax(n))
+    in_coalition = np.zeros(m, dtype=bool)
+    in_coalition[start] = True
+    total_votes = n[start]
+    total_risk = 0.0
+
+    cached_risk = mr[start].copy()
+    cached_risk[start] = 0.0
+
+    while total_votes < threshold:
+        candidates_risk = np.where(in_coalition, np.inf, cached_risk)
+        best = int(np.argmin(candidates_risk))
+
+        total_risk += cached_risk[best]
+        in_coalition[best] = True
+        total_votes += n[best]
+
+        cached_risk += mr[best]
+        cached_risk[best] = 0.0
+
+    buffer = total_risk * random.uniform(0.15, 0.40) + random.uniform(0.03, 0.1)
+    d = round(total_risk + buffer, 2)
 
     return matrix_c, matrix_r, d
 
@@ -68,7 +62,6 @@ def generate_data():
 
     n = [random.randint(n_min, n_max) for _ in range(m)]
 
-    # t в помірному діапазоні — не надто велике, щоб умова ядра не була нереально жорсткою
     t = round(random.uniform(0.3, 0.6), 2)
 
     total_pairs = m * (m - 1) // 2
@@ -104,8 +97,6 @@ def generate_data():
 def generate_test_data(m, n_min, n_max, t_min=0, t_max=1, d_min=0, d_max=1):
     n = [random.randint(n_min, n_max) for _ in range(m)]
 
-    # Якщо діапазон t не задано явно — звужуємо до помірного,
-    # щоб умова сумісності з ядром не ставала нереально жорсткою
     if t_min == 0 and t_max == 1:
         t = round(random.uniform(0.3, 0.6), 2)
     else:
@@ -122,10 +113,8 @@ def generate_test_data(m, n_min, n_max, t_min=0, t_max=1, d_min=0, d_max=1):
     r_good_pairs = set(map(tuple, [all_pairs[k] for k in range(r_good)]))
 
     if d_min == 0 and d_max == 1:
-        # Автоматичний вибір d: гарантуємо, що хоча б одна коаліція проходить
         matrix_c, matrix_r, d = _build_matrices(m, n, t, all_pairs, c_good_pairs, r_good_pairs)
     else:
-        # Діапазон d задано явно — не перевизначаємо
         matrix_c = [0.0] * (m * m)
         for i in range(m):
             matrix_c[i*m + i] = 1.0
