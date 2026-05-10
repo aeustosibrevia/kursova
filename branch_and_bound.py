@@ -110,9 +110,12 @@ def run_branch_and_bound(m, n, c, r, t, d):
             best_val = -1
 
             for j in candidates:
+
                 score = 0
-                for h in H:
-                    score += matrix_c[h, j]
+
+                for i in candidates:
+                    if i != j and matrix_c[i, j] >= t:
+                        score += matrix_c[i, j]
 
                 if score > best_val:
                     best_val = score
